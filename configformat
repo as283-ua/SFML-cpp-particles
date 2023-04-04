@@ -1,0 +1,11 @@
+width
+height
+maxspeed
+gravity
+always center
+to center gradually decrease accel / die down basically. goes hand in hand with previous
+limit to bounds o window
+initial acceleration direction: 0 origin, 1 circles, 2 center, 3 center reverse, 4 up down
+color fade
+long lifetime
+show gravityPoints
