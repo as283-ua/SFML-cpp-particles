@@ -3,6 +3,7 @@
 
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <chrono>
 #include <random>
 #include <tuple>
@@ -44,6 +45,10 @@ const uint SCREENX = sf::VideoMode::getDesktopMode().width;
 sf::Mouse mouse;
 sf::RenderWindow window(sf::VideoMode(WINDOWX, WINDOWY), "particles");
 sf::Color mainColor = sf::Color::White;
+
+sf::Sound bop;
+std::vector<sf::Sound> bops(5, sf::Sound());
+std::vector<sf::SoundBuffer> bopBuffers(5, sf::SoundBuffer());
 
 
 class GravityPoint{
@@ -231,6 +236,8 @@ void updateCluster(Particle* pc, uint size, double time){
                     limUp = window.getView().getCenter().y - window.getView().getSize().y/2,
                     limDown = window.getView().getCenter().y + window.getView().getSize().y/2;
 
+                bool collided = false;
+
                 if(pc[i].point->position.x < limLeft){
                     pc[i].point->position.x = limLeft;
 
@@ -239,6 +246,7 @@ void updateCluster(Particle* pc, uint size, double time){
                     pc[i].speed.y = pc[i].speed.y/2;
                     pc[i].acceleration.x = -pc[i].acceleration.x/2;
                     pc[i].acceleration.y = pc[i].acceleration.y/2;
+                    collided = true;
                 } else if (pc[i].point->position.x >= limRight)
                 {
                     pc[i].point->position.x = limRight - 1;
@@ -247,6 +255,7 @@ void updateCluster(Particle* pc, uint size, double time){
                     pc[i].speed.y = pc[i].speed.y/2;
                     pc[i].acceleration.x = -pc[i].acceleration.x/2;
                     pc[i].acceleration.y = pc[i].acceleration.y/2;
+                    collided = true;
                 }
 
                 if(pc[i].point->position.y < limUp){
@@ -256,6 +265,8 @@ void updateCluster(Particle* pc, uint size, double time){
                     pc[i].speed.y = -pc[i].speed.y/2;
                     pc[i].acceleration.x = pc[i].acceleration.x/2;
                     pc[i].acceleration.y = -pc[i].acceleration.y/2;
+
+                    collided = true;
                 } else if (pc[i].point->position.y >= limDown)
                 {
                     pc[i].point->position.y = limDown - 1;
@@ -264,7 +275,16 @@ void updateCluster(Particle* pc, uint size, double time){
                     pc[i].speed.y = -pc[i].speed.y/2;
                     pc[i].acceleration.x = pc[i].acceleration.x/2;
                     pc[i].acceleration.y = -pc[i].acceleration.y/2;
+
+                    collided = true;
                 }
+
+                if (collided){
+                    unsigned rnd = rand()%10;
+                    if(rnd < bops.size()){
+                        bops[rnd].play();
+                    }
+                } 
             }           
 
             if (COLORFADE != 1)
@@ -288,21 +308,6 @@ void updateCluster(Particle* pc, uint size, double time){
 
             float centerx = window.getSize().x/2;
             float centery = window.getSize().y/2;
-            // if(ALWAYSTOCENTER == 1){
-            //     float distXtoCenter = centerx - pc[i].point->position.x,
-            //             distYtoCenter = centery - pc[i].point->position.y;
-            //     float centerDist = hypotenuse(distXtoCenter, distYtoCenter);
-
-
-            //     pc[i].acceleration.x = 10*GRAVITYMULTIPLIER*(distXtoCenter/centerDist);
-            //     pc[i].acceleration.y = 10*GRAVITYMULTIPLIER*(distYtoCenter/centerDist);
-
-            //     if (TOCENTERGRADUAL == 1)
-            //     {
-            //         pc[i].speed.x *= 1-(pc[i].currentLife)/pc[i].lifetime/2;
-            //         pc[i].speed.y *= 1-(pc[i].currentLife)/pc[i].lifetime/2;
-            //     }
-            // } else 
             if (ALWAYSTOCENTERINVERSE == 1)
             {
                 pc[i].acceleration.x = (centerx - pc[i].point->position.x)*GRAVITYMULTIPLIER;
@@ -486,10 +491,10 @@ void printControls(){
                 "I-\tAlways to center Inverse\n" <<
                 "B-\tToggle bound to border\n" <<
                 "V-\tToggle color fade\n" <<
-                "up/down arrows-\tIncrease/decrease gravity multiplier\n" <<
-                "left/right arrows-\tIncrease/decrease emited particles\n" <<
                 "S-\tShow center\n" <<
-                "L-\tLong lifetime toggle\n";
+                "L-\tLong lifetime toggle\n" <<
+                "up/down arrows-\tIncrease/decrease gravity multiplier\n" <<
+                "left/right arrows-\tIncrease/decrease emited particles\n";
 }
 
 int main(int argc, char** argv){
@@ -504,25 +509,31 @@ int main(int argc, char** argv){
     int particleCountMax, particleCount;
     particleCountMax = checkArgs(argc, argv);
 
+    for (size_t i = 0; i < bops.size(); i++)
+    {
+        sf::SoundBuffer& soundbuffer = bopBuffers[i];
+
+        if (!soundbuffer.loadFromFile("sounds/bop" + std::to_string(i+1) + ".wav"))
+        {
+            return 1;
+        }
+
+        bops[i].setBuffer(soundbuffer);
+    }
+    
     printControls();
 
     particleCount = particleCountMax;
     Particle* particleCluster = new Particle[particleCount];
     initCluster(particleCluster, particleCount);
 
-    // sf::CircleShape circle(10);
-    // circle.setFillColor(sf::Color::White);
-    // circle.setOrigin(10, 10);
-    // circle.setPosition(WINDOWX/2, WINDOWY/2);
-
-
-    // Particle p(400, 300, rand()%200-100, rand()%200-100, 200, -200);
     sf::Event e;
 
     double t0 = getTime();
     sf::Vector2f windowViewCenter, windowViewSize;
     while (window.isOpen())
     {
+        
         while (window.pollEvent(e))
         {
             checkEvent(e, particleCountMax, particleCount);
@@ -540,11 +551,6 @@ int main(int argc, char** argv){
 
         if (SHOWGRAVITYPTS == 1)
         {
-            // if (ALWAYSTOCENTER == 1)
-            // {
-            //     window.draw(circle);
-            // }
-            
             for (size_t i = 0; i < gravPoints.size(); i++)
             {
                 window.draw(gravPoints[i].circleIndicator);
